@@ -1,64 +1,29 @@
-# US Stock Market API Examples for Nasdaq and NYSE
+# Build a US Stock Watchlist with Nasdaq and NYSE Symbols
 
-**美股行情 API 接入示例**
+A US watchlist can contain both `NASDAQ:AAPL` and `NYSE:JPM`. With ZaFeed, both use `market=US` and a US market Key. Keep the exchange prefix so the quote response can be matched to the original watchlist entry.
 
-For the US market, ZaFeed uses `market=US` with symbols such as `NASDAQ:AAPL` and `NYSE:JPM`. Use the US market Key for both Nasdaq and NYSE symbols.
+美股自选列表示例：在同一次请求里查询纳斯达克和纽交所股票，并保留每个标的的交易所前缀。
 
-US stock quotes, Nasdaq and NYSE stock symbols, historical OHLC and WebSocket through ZaFeed. This repository contains client examples for the ZaFeed API, with public catalog lookups and authenticated REST requests.
+## Resolve the watchlist first
 
-[ZaFeed 官网](https://www.zafeed.com/) · [API Quick Start](https://www.zafeed.com/docs-guide.html) · [Markets & Pricing](https://www.zafeed.com/pricing.html) · [Symbol Directory](https://www.zafeed.com/symbols.html) · [Trading Calendar](https://www.zafeed.com/calendar.html)
-
-## United States exchanges and ticker symbols · 交易所与标的代码
-
-Market code: `US`. Public catalog exchange codes: **NASDAQ, NYSE, AMEX**. Time zone: `America/New_York`.
-
-| ZaFeed symbol | Instrument | Currency |
-| --- | --- | --- |
-| `NASDAQ:AAPL` | Apple Inc. | USD |
-| `NASDAQ:AMZN` | Amazon.com | USD |
-| `NYSE:JPM` | JPMorgan Chase | USD |
-| `NASDAQ:MSFT` | Microsoft | USD |
-| `NASDAQ:NVDA` | NVIDIA | USD |
-| `NASDAQ:TSLA` | Tesla | USD |
-
-## Run a public catalog request · 无需 Key 查询标的
-
-| Language | Run |
-| --- | --- |
-| Python 3 | `python3 market_data.py catalog` |
-| Node.js 22+ | `node market-data.mjs catalog` |
-| Go | `go run market_data.go catalog` |
-| Java 17+ | `java MarketData.java catalog` |
-| cURL | `bash market-data.sh catalog` |
-
-Python, Node.js and Go filter the public response by market. Java and cURL print the full public response. The catalog returns sample symbol metadata.
-
-## Connect to quotes, candles and exchange snapshots · 连接行情接口
-
-Set `ZAFEED_HTTP_BASE_URL` to the HTTPS origin assigned for your data service, and `ZAFEED_API_KEY` to a Key for the selected market. The scripts default to `US` and `NASDAQ:AAPL`. Set `ZAFEED_MARKET` and `ZAFEED_SYMBOL` together when switching markets.
+Node.js 22 or later; no installation or credentials needed for this step:
 
 ```bash
-python3 market_data.py quotes
-node market-data.mjs klines
-go run market_data.go snapshot
-java MarketData.java quotes
-bash market-data.sh klines
+node us-watchlist.mjs
 ```
 
-- [Stock quotes API](https://www.zafeed.com/docs-quote.html) uses `symbols` for a comma-separated list.
-- [Historical OHLC API](https://www.zafeed.com/docs-kline.html) uses `symbol`, `interval` and `limit`.
-- [Exchange snapshot API](https://www.zafeed.com/docs-exchange.html) can filter by `venue` and returns a pagination cursor when available.
+The script checks each requested identifier against ZaFeed's public directory. It prints which symbols the sample catalog contains. A missing sample is a reason to check the [symbol directory](https://www.zafeed.com/symbols.html?market=us), not proof of a delisting.
 
-## Subscribe with WebSocket · WebSocket 订阅
+## Request one batch of quotes
 
-Set `ZAFEED_WS_BASE_URL` to your assigned `wss://` origin and use the same market Key.
+Set `ZAFEED_HTTP_BASE_URL` and `ZAFEED_API_KEY` from your provisioned US service:
 
 ```bash
-node market-data.mjs stream
+node us-watchlist.mjs quotes NASDAQ:AAPL NYSE:JPM
 ```
 
-The example waits for `welcome`, sends `subscribe`, and reads messages for up to 15 seconds. A subscription acknowledgement can arrive before a quote update. See the [WebSocket protocol](https://www.zafeed.com/docs-ws.html).
+The script encodes the complete comma-separated `symbols` parameter for [`GET /v1/quotes`](https://www.zafeed.com/docs-quote.html). It refuses redirects so the market Key stays with the configured origin. The public lookup was tested; live quotes require an active US entitlement.
 
-**Availability · 接入状态:** The public catalog commands were checked against ZaFeed. Authenticated REST and WebSocket require a provisioned data service endpoint and matching market Key. 实时报价、历史 K 线和推送需要已开通的接口地址及对应市场 Key。
+For a watchlist UI, keep the exchange-qualified ID as the row key and do not replace a previous quote with zero when a response omits that symbol. Display timestamps using `America/New_York`; a fixed UTC offset will be wrong for part of the year. For early closes, use the calendar for the actual listing venue: [Nasdaq](https://www.nasdaq.com/market-activity/stock-market-holiday-schedule) or [NYSE](https://www.nyse.com/trade/hours-calendars).
 
-**Support · 技术支持:** [support@zafeed.net](mailto:support@zafeed.net)
+The [shared ZaFeed quickstart](https://github.com/ZaFeed/stock-market-data-api) has single-request examples in Python, Go, Java and cURL. For a streaming watchlist, see [subscription messages and acknowledgements](https://www.zafeed.com/docs-ws.html).

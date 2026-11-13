@@ -3,11 +3,15 @@ import os
 import sys
 from urllib.error import HTTPError
 from urllib.parse import urlencode, urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 
 SITE = "https://www.zafeed.com"
 MARKET = os.environ.get("ZAFEED_MARKET", "US").upper()
 SYMBOL = os.environ.get("ZAFEED_SYMBOL", "NASDAQ:AAPL").upper()
+
+class RejectRedirects(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
 
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "catalog"
@@ -33,7 +37,7 @@ def main():
         raise SystemExit("Choose catalog, quotes, klines or snapshot.")
     request = Request(f"{host}/v1/{mode}?{urlencode(params)}", headers={"X-API-Key": key})
     try:
-        with urlopen(request, timeout=15) as response:
+        with build_opener(RejectRedirects()).open(request, timeout=15) as response:
             print(response.read().decode())
     except HTTPError as error:
         print(error.read().decode(), file=sys.stderr)
